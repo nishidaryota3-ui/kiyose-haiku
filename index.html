@@ -13,8 +13,9 @@
     <meta name="application-name" content="おみ句じ">
     <meta name="theme-color" content="#faf9f6">
     
-    <link rel="apple-touch-icon" href="icon.png">
-    <link rel="icon" sizes="192x192" href="icon.png">
+    <!-- アプリアイコン指定 -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
     <link rel="manifest" href="manifest.json">
 
     <style>
@@ -123,13 +124,13 @@
             text-align: center; display: block;
         }
         
-        /* パンくずリスト */
+        /* 🧭 パンくずリスト（横幅一杯を使った1行表示＆極稀な場合のみ安全改行） */
         .breadcrumb {
             position: absolute; 
             top: calc(20px + env(safe-area-inset-top)); 
             left: 20px; 
-            right: 180px; 
-            font-size: 0.8rem; 
+            right: 120px; /* 右上の作者名エリア手前まで画面いっぱいに広げる */
+            font-size: 0.82rem; 
             color: #666666;
             letter-spacing: 0.05em; 
             z-index: 20; 
@@ -144,23 +145,20 @@
         .breadcrumb span.separator { color: #b5b5b5; font-family: sans-serif; }
         .breadcrumb span.current { white-space: nowrap; }
         
-        /* 🏷️ 右上情報グループ */
+        /* 🏷️ 右上情報グループ（作者名のみのシンプル表示） */
         .room-info-group { 
             position: absolute; 
             top: calc(20px + env(safe-area-inset-top)); 
             right: 20px; 
-            width: 150px; 
             display: flex; 
             flex-direction: column; 
             align-items: flex-end; 
-            gap: 4px; 
             z-index: 20; 
             text-align: right; 
         }
         
-        .info-upper-tag { font-size: 1.05rem; color: #2b2b2b; letter-spacing: 0.1em; font-weight: 500; word-break: break-all; }
+        .info-upper-tag { font-size: 1.05rem; color: #2b2b2b; letter-spacing: 0.1em; font-weight: 500; white-space: nowrap; }
         .info-upper-tag a { color: #2b2b2b; text-decoration: none; border-bottom: 1px solid #2b2b2b; }
-        .info-lower-tag { font-size: 0.82rem; color: #777777; letter-spacing: 0.05em; opacity: 1; transition: opacity 0.3s ease; }
         
         #infoTrigger { 
             position: absolute; top: calc(18px + env(safe-area-inset-top)); right: 20px; 
@@ -186,11 +184,11 @@
             z-index: 100; color: #8c8476; font-size: 14px; letter-spacing: 0.15em; 
         }
 
-        /* 🐾 おみ句じ猫ボタン（さらに画面左端へ寄せた設定） */
+        /* 🐾 おみ句じ猫ボタン（左端寄せ） */
         .fixed-cat-trigger {
             position: fixed;
             bottom: calc(5px + env(safe-area-inset-bottom));
-            left: calc(0px + env(safe-area-inset-left));  /* 端ギリギリまで左寄りに調整 */
+            left: calc(0px + env(safe-area-inset-left));
             width: 220px !important;
             height: auto !important;
             cursor: pointer;
@@ -268,7 +266,6 @@
     <div id="roomPage" class="layer-page">
         <div class="room-info-group">
             <div id="roomMainTag" class="info-upper-tag"></div>
-            <div id="roomSubTag" class="info-lower-tag"></div>
         </div>
         <button id="prevBtn" class="nav-arrow arrow-right" onclick="changeHaiku(-1)">＞</button> 
         <button id="nextBtn" class="nav-arrow arrow-left" onclick="changeHaiku(1)">＜</button>  
@@ -288,6 +285,11 @@
         let navState = { currentLayer: 'topPage', category: '', seasonName: '', kigoName: '', authorName: '', isDetarame: false };
 
         window.onload = function() {
+            // Service Worker の登録（PWA・アプリ化用）
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            }
+
             const script = document.createElement('script');
             script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
             document.body.appendChild(script);
@@ -349,6 +351,7 @@
             launchOmikuji();
         }
 
+        /* 🧭 パンくずリスト更新（末尾に「季語（詳細季節）」を組み込む処理） */
         function updateBreadcrumb() {
             const container = document.getElementById('globalBreadcrumb');
             if (navState.currentLayer === 'topPage') {
@@ -374,7 +377,10 @@
                     }
                 }
                 if (navState.currentLayer === 'roomPage') {
-                    html += ` <span class="separator">&lt;</span> <span class="current">${navState.kigoName}</span>`;
+                    // パンくずの末尾に 季語（詳細季節）を表示
+                    const currentHaiku = currentRoomHaikus[currentIndex];
+                    let detailSuffix = (currentHaiku && currentHaiku.detailSeason) ? `（${currentHaiku.detailSeason}）` : '';
+                    html += ` <span class="separator">&lt;</span> <span class="current">${navState.kigoName}${detailSuffix}</span>`;
                 }
             }
             container.innerHTML = html;
@@ -394,7 +400,6 @@
             
             isRoomOpen = (pageId === 'roomPage');
 
-            // 🐾 おみくじ猫ボタンの制御（季寄せモード内でのみ表示）
             const catBtn = document.getElementById('fixedCatBtn');
             if (navState.category === 'saijiki') {
                 catBtn.classList.remove('hidden');
@@ -474,55 +479,25 @@
             document.getElementById('infoTrigger').style.display = 'none';
             const currentHaiku = currentRoomHaikus[currentIndex];
             
-            let kigoInfo = (currentHaiku.season === 'muki') ? '無季' : (currentHaiku.parentKigo || currentHaiku.kigo) + (currentHaiku.detailSeason ? `（${currentHaiku.detailSeason}）` : '');
-            document.getElementById('roomMainTag').innerText = kigoInfo;
-            document.getElementById('roomSubTag').innerHTML = `<a href="javascript:void(0);" onclick="jumpToAuthorRoom('${currentHaiku.author}')">${currentHaiku.author}</a>`;
-            
-            document.getElementById('roomSubTag').style.opacity = '1';
+            document.getElementById('roomMainTag').innerHTML = `<a href="javascript:void(0);" onclick="jumpToAuthorRoom('${currentHaiku.author}')">${currentHaiku.author}</a>`;
             updateBreadcrumb();
         }
 
+        /* 🏷️ 右上情報：作者名のみの表示へ変更 */
         function updateHaikuDisplay() {
             const currentHaiku = currentRoomHaikus[currentIndex];
             document.getElementById('haikuPhrase').innerText = currentHaiku.phrase;
-            
-            let kigoString = '';
-            if (currentHaiku.season === 'muki') {
-                kigoString = '無季';
-            } else {
-                let pKigo = currentHaiku.parentKigo || currentHaiku.kigo;
-                let dSeason = currentHaiku.detailSeason ? `（${currentHaiku.detailSeason}）` : '';
-                kigoString = pKigo + dSeason;
-            }
 
             if (navState.category === 'omikuji_all') {
                 infoRevealed = false; 
                 document.getElementById('roomMainTag').innerText = ''; 
-                document.getElementById('roomSubTag').innerText = '';
-                document.getElementById('roomSubTag').style.opacity = '0'; 
                 document.getElementById('infoTrigger').style.display = 'block';
-            } 
-            else if (currentDisplayType === 'kigo' || currentDisplayType === 'kigo_muki') {
-                document.getElementById('infoTrigger').style.display = 'none'; 
-                document.getElementById('roomSubTag').style.opacity = '1';
-                
-                const mainTag = document.getElementById('roomMainTag');
-                mainTag.className = 'info-lower-tag';
-                mainTag.innerText = (currentDisplayType === 'kigo_muki') ? '無季' : '季語：' + kigoString;
-                
-                const subTag = document.getElementById('roomSubTag');
-                subTag.className = 'info-upper-tag';
-                subTag.innerText = currentHaiku.author;
             } 
             else {
                 document.getElementById('infoTrigger').style.display = 'none'; 
-                document.getElementById('roomSubTag').style.opacity = '1';
-                
-                document.getElementById('roomMainTag').className = 'info-upper-tag';
-                document.getElementById('roomSubTag').className = 'info-lower-tag';
-                
-                document.getElementById('roomMainTag').innerText = kigoString;
-                document.getElementById('roomSubTag').innerText = currentHaiku.author;
+                const mainTag = document.getElementById('roomMainTag');
+                mainTag.className = 'info-upper-tag';
+                mainTag.innerText = currentHaiku.author;
             }
 
             if (currentIndex === 0) document.getElementById('prevBtn').classList.add('disabled'); else document.getElementById('prevBtn').classList.remove('disabled');
@@ -531,7 +506,7 @@
             updateBreadcrumb();
         }
 
-        // キーボード操作対応（MacBook用）
+        // キーボード操作対応
         document.addEventListener('keydown', function(event) {
             if (event.key === 'o' || event.key === 'O') {
                 triggerInstantOmikuji();
