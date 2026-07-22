@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>おみ句じ ＆ 季寄せ</title>
 
-    <!-- PWA / Android・iOS アプリ化設定 -->
+    <!-- PWA / Android・iOS スタンドアロン（アプリ化）強力指定 -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="おみ句じ">
+    <meta name="application-name" content="おみ句じ">
     <meta name="theme-color" content="#faf9f6">
     
     <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" sizes="192x192" href="icon.png">
     <link rel="manifest" href="manifest.json">
 
     <style>
@@ -120,18 +123,18 @@
             text-align: center; display: block;
         }
         
-        /* パンくずリスト（右上情報と絶対に被らないよう領域制限） */
+        /* パンくずリスト */
         .breadcrumb {
             position: absolute; 
             top: calc(20px + env(safe-area-inset-top)); 
             left: 20px; 
-            right: 180px; /* 右上に180pxの侵入禁止エリアを設定 */
+            right: 180px; 
             font-size: 0.8rem; 
             color: #666666;
             letter-spacing: 0.05em; 
             z-index: 20; 
             display: flex; 
-            flex-wrap: wrap; /* 被りそうになったら自動で改行 */
+            flex-wrap: wrap; 
             align-items: center; 
             gap: 0.2rem 0.4rem;
             line-height: 1.3;
@@ -146,7 +149,7 @@
             position: absolute; 
             top: calc(20px + env(safe-area-inset-top)); 
             right: 20px; 
-            width: 150px; /* 横幅を固定化 */
+            width: 150px; 
             display: flex; 
             flex-direction: column; 
             align-items: flex-end; 
@@ -183,12 +186,12 @@
             z-index: 100; color: #8c8476; font-size: 14px; letter-spacing: 0.15em; 
         }
 
-        /* 🐾 おみ句じ猫ボタン（確実に倍サイズで表示されるよう強制修正） */
+        /* 🐾 おみ句じ猫ボタン（さらに画面左端へ寄せた設定） */
         .fixed-cat-trigger {
             position: fixed;
-            bottom: calc(15px + env(safe-area-inset-bottom));
-            left: calc(15px + env(safe-area-inset-left));
-            width: 220px !important;  /* 倍サイズを強力に固定 */
+            bottom: calc(5px + env(safe-area-inset-bottom));
+            left: calc(0px + env(safe-area-inset-left));  /* 端ギリギリまで左寄りに調整 */
+            width: 220px !important;
             height: auto !important;
             cursor: pointer;
             z-index: 50;
