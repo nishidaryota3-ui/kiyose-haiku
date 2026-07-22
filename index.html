@@ -120,21 +120,21 @@
             text-align: center; display: block;
         }
         
-        /* パンくずリスト（右上情報と被らないように領域制限＆自動折り返し） */
+        /* パンくずリスト（右上情報と絶対に被らないよう領域制限） */
         .breadcrumb {
             position: absolute; 
             top: calc(20px + env(safe-area-inset-top)); 
             left: 20px; 
-            max-width: calc(100vw - 160px); /* 右上情報と衝突しないよう幅制限 */
-            font-size: 0.82rem; 
+            right: 180px; /* 右上に180pxの侵入禁止エリアを設定 */
+            font-size: 0.8rem; 
             color: #666666;
             letter-spacing: 0.05em; 
             z-index: 20; 
             display: flex; 
-            flex-wrap: wrap; /* 長くなった時に綺麗に自動折り返し */
+            flex-wrap: wrap; /* 被りそうになったら自動で改行 */
             align-items: center; 
-            gap: 0.3rem 0.5rem;
-            line-height: 1.4;
+            gap: 0.2rem 0.4rem;
+            line-height: 1.3;
         }
         .breadcrumb span.link { cursor: pointer; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; white-space: nowrap; }
         .breadcrumb span.link:hover { color: #2b2b2b; border-bottom: 1px solid #2b2b2b; }
@@ -143,13 +143,21 @@
         
         /* 🏷️ 右上情報グループ */
         .room-info-group { 
-            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; 
-            display: flex; flex-direction: column; align-items: flex-end; gap: 6px; z-index: 20; text-align: right; 
+            position: absolute; 
+            top: calc(20px + env(safe-area-inset-top)); 
+            right: 20px; 
+            width: 150px; /* 横幅を固定化 */
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-end; 
+            gap: 4px; 
+            z-index: 20; 
+            text-align: right; 
         }
         
-        .info-upper-tag { font-size: 1.05rem; color: #2b2b2b; letter-spacing: 0.1em; font-weight: 500; }
+        .info-upper-tag { font-size: 1.05rem; color: #2b2b2b; letter-spacing: 0.1em; font-weight: 500; word-break: break-all; }
         .info-upper-tag a { color: #2b2b2b; text-decoration: none; border-bottom: 1px solid #2b2b2b; }
-        .info-lower-tag { font-size: 0.85rem; color: #777777; letter-spacing: 0.05em; opacity: 1; transition: opacity 0.3s ease; }
+        .info-lower-tag { font-size: 0.82rem; color: #777777; letter-spacing: 0.05em; opacity: 1; transition: opacity 0.3s ease; }
         
         #infoTrigger { 
             position: absolute; top: calc(18px + env(safe-area-inset-top)); right: 20px; 
@@ -175,21 +183,20 @@
             z-index: 100; color: #8c8476; font-size: 14px; letter-spacing: 0.15em; 
         }
 
-        /* 🐾 おみ句じ猫ボタン（サイズを2倍の240pxへ拡大） */
+        /* 🐾 おみ句じ猫ボタン（確実に倍サイズで表示されるよう強制修正） */
         .fixed-cat-trigger {
             position: fixed;
             bottom: calc(15px + env(safe-area-inset-bottom));
             left: calc(15px + env(safe-area-inset-left));
-            width: 240px;             /* 以前の倍のサイズへ大幅拡大 */
-            max-width: 45vw;          /* スマホ画面でもはみ出さない上限 */
-            height: auto;
+            width: 220px !important;  /* 倍サイズを強力に固定 */
+            height: auto !important;
             cursor: pointer;
             z-index: 50;
             transition: transform 0.2s ease, opacity 0.3s ease;
             opacity: 0.85;
         }
         .fixed-cat-trigger:hover { transform: scale(1.05); opacity: 1; }
-        .fixed-cat-trigger.hidden { display: none; }
+        .fixed-cat-trigger.hidden { display: none !important; }
     </style>
 </head>
 <body>
