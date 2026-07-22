@@ -37,7 +37,7 @@
             flex-direction: column;
         }
         
-        /* 🏡 トップメニュー（画面からはみ出さないよう全体を最適化） */
+        /* 🏡 トップメニュー */
         #topPage { 
             display: flex; 
             gap: clamp(1.5rem, 5vw, 3.5rem); 
@@ -92,7 +92,7 @@
             height: 60vh;
         }
 
-        /* 横一列スクロールコンテナ（俳人・親季語一覧用） */
+        /* 横一列スクロールコンテナ */
         .horizontal-scroll-container {
             display: flex; flex-direction: row-reverse; justify-content: center; align-items: center;
             width: 85vw; height: 65vh; overflow-x: auto; overflow-y: hidden;
@@ -120,15 +120,26 @@
             text-align: center; display: block;
         }
         
-        /* パンくずリスト */
+        /* パンくずリスト（右上情報と被らないように領域制限＆自動折り返し） */
         .breadcrumb {
-            position: absolute; top: calc(20px + env(safe-area-inset-top)); left: 20px; 
-            font-size: 0.85rem; color: #666666;
-            letter-spacing: 0.05em; z-index: 20; display: flex; align-items: center; gap: 0.5rem;
+            position: absolute; 
+            top: calc(20px + env(safe-area-inset-top)); 
+            left: 20px; 
+            max-width: calc(100vw - 160px); /* 右上情報と衝突しないよう幅制限 */
+            font-size: 0.82rem; 
+            color: #666666;
+            letter-spacing: 0.05em; 
+            z-index: 20; 
+            display: flex; 
+            flex-wrap: wrap; /* 長くなった時に綺麗に自動折り返し */
+            align-items: center; 
+            gap: 0.3rem 0.5rem;
+            line-height: 1.4;
         }
-        .breadcrumb span.link { cursor: pointer; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
+        .breadcrumb span.link { cursor: pointer; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; white-space: nowrap; }
         .breadcrumb span.link:hover { color: #2b2b2b; border-bottom: 1px solid #2b2b2b; }
         .breadcrumb span.separator { color: #b5b5b5; font-family: sans-serif; }
+        .breadcrumb span.current { white-space: nowrap; }
         
         /* 🏷️ 右上情報グループ */
         .room-info-group { 
@@ -145,7 +156,7 @@
             font-size: 1.1rem; color: #8c8476; cursor: pointer; z-index: 30; display: none; padding: 10px;
         }
         
-        /* 矢印ナビゲーションボタン（「i」と同等の小ぶりで控えめなデザインに変更） */
+        /* 矢印ナビゲーションボタン */
         .nav-arrow { 
             position: absolute; top: 50%; transform: translateY(-50%); 
             font-size: 1.2rem; color: #8c8476; cursor: pointer; 
@@ -164,13 +175,13 @@
             z-index: 100; color: #8c8476; font-size: 14px; letter-spacing: 0.15em; 
         }
 
-        /* 🐾 おみ句じ猫ボタン（季寄せ時のみ左下に固定表示） */
+        /* 🐾 おみ句じ猫ボタン（サイズを2倍の240pxへ拡大） */
         .fixed-cat-trigger {
             position: fixed;
-            bottom: calc(20px + env(safe-area-inset-bottom));
-            left: calc(20px + env(safe-area-inset-left));
-            width: 120px;
-            max-width: 22vw;
+            bottom: calc(15px + env(safe-area-inset-bottom));
+            left: calc(15px + env(safe-area-inset-left));
+            width: 240px;             /* 以前の倍のサイズへ大幅拡大 */
+            max-width: 45vw;          /* スマホ画面でもはみ出さない上限 */
             height: auto;
             cursor: pointer;
             z-index: 50;
@@ -191,7 +202,7 @@
     <div id="globalBreadcrumb" class="breadcrumb" style="display: none;"></div>
     <div id="infoTrigger" onclick="revealHiddenInfo()">ℹ</div>
 
-    <!-- 🏡 トップメニュー（文字サイズ＆間隔を画面内に自動調整） -->
+    <!-- 🏡 トップメニュー -->
     <div id="topPage" class="layer-page">
         <!-- おみ句じ ブロック -->
         <div class="menu-block">
@@ -226,7 +237,7 @@
         </div>
     </div>
 
-    <!-- 季寄せ：季節一覧 ページ（1画面に綺麗に収まるレイアウト） -->
+    <!-- 季寄せ：季節一覧 ページ -->
     <div id="saijikiPage" class="layer-page">
         <div class="fits-screen-container">
             <div class="vertical-link" onclick="showKigoList('haru', '春')">春</div>
@@ -249,7 +260,6 @@
             <div id="roomMainTag" class="info-upper-tag"></div>
             <div id="roomSubTag" class="info-lower-tag"></div>
         </div>
-        <!-- 「i」と同等サイズの小ぶりで控えめな矢印ボタン -->
         <button id="prevBtn" class="nav-arrow arrow-right" onclick="changeHaiku(-1)">＞</button> 
         <button id="nextBtn" class="nav-arrow arrow-left" onclick="changeHaiku(1)">＜</button>  
         <div class="haiku-screen"><p id="haikuPhrase" class="phrase"></p></div>
