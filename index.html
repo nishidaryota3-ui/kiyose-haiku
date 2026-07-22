@@ -26,64 +26,81 @@
 
         .vertical-link {
             writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;
-            font-size: 1.5rem; letter-spacing: 0.3em;
+            font-size: clamp(1.1rem, 4vw, 1.4rem); letter-spacing: 0.25em;
             cursor: pointer; transition: color 0.3s ease; white-space: nowrap;
         }
         .vertical-link:hover { color: #888888; }
 
         .layer-page {
             position: absolute; top: 0; left: 0; height: 100%; width: 100%;
-            display: none; justify-content: center; align-items: center; padding: 15vh 10vw;
+            display: none; justify-content: center; align-items: center; padding: 10vh 5vw;
             flex-direction: column;
         }
         
-        /* 🏡 トップメニュー */
-        #topPage { display: flex; gap: 4.2rem; flex-direction: row; } 
+        /* 🏡 トップメニュー（画面からはみ出さないよう全体を最適化） */
+        #topPage { 
+            display: flex; 
+            gap: clamp(1.5rem, 5vw, 3.5rem); 
+            flex-direction: row; 
+            justify-content: center;
+            align-items: center;
+            max-width: 95vw;
+        } 
         
         .menu-block {
             display: flex;
             flex-direction: row;
             align-items: flex-start;
-            height: 400px; 
+            height: clamp(280px, 50vh, 380px); 
         }
         
         .main-headline {
-            font-size: 2.0rem;
+            font-size: clamp(1.5rem, 5vw, 1.9rem);
             font-weight: 500;
             color: #2b2b2b;
             writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;
-            letter-spacing: 0.3em;
+            letter-spacing: 0.25em;
         }
         
         .sub-menu-group {
             display: flex;
             flex-direction: row;
-            gap: 2.8rem; 
-            margin-right: 3.5rem; 
+            gap: clamp(1.0rem, 3.5vw, 2.2rem); 
+            margin-right: clamp(1.2rem, 3.5vw, 2.5rem); 
         }
         
         .sub-link {
-            font-size: 1.5rem;
+            font-size: clamp(1.1rem, 3.8vw, 1.35rem);
             font-weight: 500;
             color: #555555;
             letter-spacing: 0.2em;
-            margin-top: 4.8rem; 
+            margin-top: clamp(2.5rem, 8vh, 4.0rem); 
         }
         .sub-link:hover { color: #888888; }
 
         #haijinPage { display: none; }
-        #haikuPage .horizontal-scroll-container { display: flex; flex-direction: row-reverse; gap: 4.5rem; }
-        #saijikiPage .horizontal-scroll-container { display: flex; flex-direction: row-reverse; gap: 4.5rem; }
+        #haikuPage .horizontal-scroll-container { display: flex; flex-direction: row-reverse; gap: clamp(1.2rem, 3vw, 3.5rem); }
+        
+        /* 季寄せ（季節選択）：スクロールなしで1画面にすっきり収めるコンテナ */
+        #saijikiPage .fits-screen-container { 
+            display: flex; 
+            flex-direction: row-reverse; 
+            justify-content: center; 
+            align-items: center;
+            gap: clamp(1.2rem, 4vw, 2.8rem); 
+            width: 100%;
+            height: 60vh;
+        }
 
-        /* 横一列スクロールコンテナ */
+        /* 横一列スクロールコンテナ（俳人・親季語一覧用） */
         .horizontal-scroll-container {
             display: flex; flex-direction: row-reverse; justify-content: center; align-items: center;
             width: 85vw; height: 65vh; overflow-x: auto; overflow-y: hidden;
             scroll-behavior: smooth;
         }
         
-        #kigoList { gap: 2.2rem !important; }
-        #haijinList { gap: 4.5rem; }
+        #kigoList { gap: 1.8rem !important; }
+        #haijinList { gap: 3.5rem; }
         
         .horizontal-scroll-container::-webkit-scrollbar { height: 6px; }
         .horizontal-scroll-container::-webkit-scrollbar-track { background: #eae8e3; border-radius: 3px; }
@@ -105,7 +122,7 @@
         
         /* パンくずリスト */
         .breadcrumb {
-            position: absolute; top: calc(25px + env(safe-area-inset-top)); left: 25px; 
+            position: absolute; top: calc(20px + env(safe-area-inset-top)); left: 20px; 
             font-size: 0.85rem; color: #666666;
             letter-spacing: 0.05em; z-index: 20; display: flex; align-items: center; gap: 0.5rem;
         }
@@ -115,29 +132,30 @@
         
         /* 🏷️ 右上情報グループ */
         .room-info-group { 
-            position: absolute; top: calc(25px + env(safe-area-inset-top)); right: 25px; 
-            display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 20; text-align: right; 
+            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 20px; 
+            display: flex; flex-direction: column; align-items: flex-end; gap: 6px; z-index: 20; text-align: right; 
         }
         
-        .info-upper-tag { font-size: 1.1rem; color: #2b2b2b; letter-spacing: 0.1em; font-weight: 500; }
+        .info-upper-tag { font-size: 1.05rem; color: #2b2b2b; letter-spacing: 0.1em; font-weight: 500; }
         .info-upper-tag a { color: #2b2b2b; text-decoration: none; border-bottom: 1px solid #2b2b2b; }
         .info-lower-tag { font-size: 0.85rem; color: #777777; letter-spacing: 0.05em; opacity: 1; transition: opacity 0.3s ease; }
         
         #infoTrigger { 
-            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 25px; 
-            font-size: 1.2rem; color: #8c8476; cursor: pointer; z-index: 30; display: none; padding: 10px;
+            position: absolute; top: calc(18px + env(safe-area-inset-top)); right: 20px; 
+            font-size: 1.1rem; color: #8c8476; cursor: pointer; z-index: 30; display: none; padding: 10px;
         }
         
-        /* 矢印ナビゲーションボタン（スマホ対応押しやすさ向上） */
+        /* 矢印ナビゲーションボタン（「i」と同等の小ぶりで控えめなデザインに変更） */
         .nav-arrow { 
             position: absolute; top: 50%; transform: translateY(-50%); 
-            font-size: 2.2rem; color: #b5b5b5; cursor: pointer; 
-            padding: 25px 15px; z-index: 20; background: none; border: none; 
-            transition: color 0.2s ease;
+            font-size: 1.2rem; color: #8c8476; cursor: pointer; 
+            padding: 20px 15px; z-index: 20; background: none; border: none; 
+            transition: color 0.2s ease, opacity 0.2s ease;
+            opacity: 0.7;
         }
-        .nav-arrow:hover { color: #2b2b2b; }
-        .arrow-left { left: calc(15px + env(safe-area-inset-left)); } 
-        .arrow-right { right: calc(15px + env(safe-area-inset-right)); }
+        .nav-arrow:hover { color: #2b2b2b; opacity: 1; }
+        .arrow-left { left: calc(10px + env(safe-area-inset-left)); } 
+        .arrow-right { right: calc(10px + env(safe-area-inset-right)); }
         .nav-arrow.disabled { visibility: hidden; }
         
         #loadingOverlay { 
@@ -151,8 +169,8 @@
             position: fixed;
             bottom: calc(20px + env(safe-area-inset-bottom));
             left: calc(20px + env(safe-area-inset-left));
-            width: 140px;
-            max-width: 25vw;
+            width: 120px;
+            max-width: 22vw;
             height: auto;
             cursor: pointer;
             z-index: 50;
@@ -173,7 +191,7 @@
     <div id="globalBreadcrumb" class="breadcrumb" style="display: none;"></div>
     <div id="infoTrigger" onclick="revealHiddenInfo()">ℹ</div>
 
-    <!-- 🏡 トップメニュー -->
+    <!-- 🏡 トップメニュー（文字サイズ＆間隔を画面内に自動調整） -->
     <div id="topPage" class="layer-page">
         <!-- おみ句じ ブロック -->
         <div class="menu-block">
@@ -208,9 +226,9 @@
         </div>
     </div>
 
-    <!-- 季寄せ：季節一覧 ページ -->
+    <!-- 季寄せ：季節一覧 ページ（1画面に綺麗に収まるレイアウト） -->
     <div id="saijikiPage" class="layer-page">
-        <div class="horizontal-scroll-container">
+        <div class="fits-screen-container">
             <div class="vertical-link" onclick="showKigoList('haru', '春')">春</div>
             <div class="vertical-link" onclick="showKigoList('natsu', '夏')">夏</div>
             <div class="vertical-link" onclick="showKigoList('aki', '秋')">秋</div>
@@ -231,7 +249,7 @@
             <div id="roomMainTag" class="info-upper-tag"></div>
             <div id="roomSubTag" class="info-lower-tag"></div>
         </div>
-        <!-- 矢印ボタン操作 -->
+        <!-- 「i」と同等サイズの小ぶりで控えめな矢印ボタン -->
         <button id="prevBtn" class="nav-arrow arrow-right" onclick="changeHaiku(-1)">＞</button> 
         <button id="nextBtn" class="nav-arrow arrow-left" onclick="changeHaiku(1)">＜</button>  
         <div class="haiku-screen"><p id="haikuPhrase" class="phrase"></p></div>
