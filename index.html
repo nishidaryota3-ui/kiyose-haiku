@@ -124,12 +124,12 @@
             text-align: center; display: block;
         }
         
-        /* 🧭 パンくずリスト（横幅一杯を使った1行表示＆極稀な場合のみ安全改行） */
+        /* 🧭 パンくずリスト */
         .breadcrumb {
             position: absolute; 
             top: calc(20px + env(safe-area-inset-top)); 
             left: 20px; 
-            right: 120px; /* 右上の作者名エリア手前まで画面いっぱいに広げる */
+            right: 140px; 
             font-size: 0.82rem; 
             color: #666666;
             letter-spacing: 0.05em; 
@@ -145,7 +145,7 @@
         .breadcrumb span.separator { color: #b5b5b5; font-family: sans-serif; }
         .breadcrumb span.current { white-space: nowrap; }
         
-        /* 🏷️ 右上情報グループ（作者名のみのシンプル表示） */
+        /* 🏷️ 右上情報グループ */
         .room-info-group { 
             position: absolute; 
             top: calc(20px + env(safe-area-inset-top)); 
@@ -285,7 +285,6 @@
         let navState = { currentLayer: 'topPage', category: '', seasonName: '', kigoName: '', authorName: '', isDetarame: false };
 
         window.onload = function() {
-            // Service Worker の登録（PWA・アプリ化用）
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('./sw.js').catch(() => {});
             }
@@ -351,7 +350,6 @@
             launchOmikuji();
         }
 
-        /* 🧭 パンくずリスト更新（末尾に「季語（詳細季節）」を組み込む処理） */
         function updateBreadcrumb() {
             const container = document.getElementById('globalBreadcrumb');
             if (navState.currentLayer === 'topPage') {
@@ -377,7 +375,6 @@
                     }
                 }
                 if (navState.currentLayer === 'roomPage') {
-                    // パンくずの末尾に 季語（詳細季節）を表示
                     const currentHaiku = currentRoomHaikus[currentIndex];
                     let detailSuffix = (currentHaiku && currentHaiku.detailSeason) ? `（${currentHaiku.detailSeason}）` : '';
                     html += ` <span class="separator">&lt;</span> <span class="current">${navState.kigoName}${detailSuffix}</span>`;
@@ -483,16 +480,33 @@
             updateBreadcrumb();
         }
 
-        /* 🏷️ 右上情報：作者名のみの表示へ変更 */
+        /* 🏷️ 右上情報：カテゴリーごとの厳密な表示コントロール */
         function updateHaikuDisplay() {
             const currentHaiku = currentRoomHaikus[currentIndex];
             document.getElementById('haikuPhrase').innerText = currentHaiku.phrase;
+
+            let kigoString = '';
+            if (currentHaiku.season === 'muki') {
+                kigoString = '無季';
+            } else {
+                let pKigo = currentHaiku.parentKigo || currentHaiku.kigo;
+                let dSeason = currentHaiku.detailSeason ? `（${currentHaiku.detailSeason}）` : '';
+                kigoString = pKigo + dSeason;
+            }
 
             if (navState.category === 'omikuji_all') {
                 infoRevealed = false; 
                 document.getElementById('roomMainTag').innerText = ''; 
                 document.getElementById('infoTrigger').style.display = 'block';
             } 
+            // 1. 「俳人」カテゴリーのみ：右上に「季語＋（詳細季節）」を表示
+            else if (navState.category === 'haijin') {
+                document.getElementById('infoTrigger').style.display = 'none'; 
+                const mainTag = document.getElementById('roomMainTag');
+                mainTag.className = 'info-upper-tag';
+                mainTag.innerText = kigoString;
+            }
+            // 2. 「季節」「季寄せ」などその他のカテゴリー：右上に「作者名」を表示
             else {
                 document.getElementById('infoTrigger').style.display = 'none'; 
                 const mainTag = document.getElementById('roomMainTag');
