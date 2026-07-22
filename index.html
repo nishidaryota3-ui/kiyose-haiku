@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>おみ句じ ＆ 季寄せ</title>
+
+    <!-- PWA / Android・iOS アプリ化設定 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#faf9f6">
+    
+    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        /* 画面全体の初期化 */
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html {
+            background-color: #faf9f6; color: #2b2b2b;
+            font-family: "游明朝", "Yu Mincho", "ヒラギノ明朝 ProN", "Hiragino Mincho ProN", "Shippori Mincho", "MS P明朝", serif;
+            overflow: hidden; height: 100%; width: 100%;
+            user-select: none; -webkit-user-select: none;
+        }
+
+        .vertical-link {
+            writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;
+            font-size: 1.5rem; letter-spacing: 0.3em;
+            cursor: pointer; transition: color 0.3s ease; white-space: nowrap;
+        }
+        .vertical-link:hover { color: #888888; }
+
+        .layer-page {
+            position: absolute; top: 0; left: 0; height: 100%; width: 100%;
+            display: none; justify-content: center; align-items: center; padding: 15vh 10vw;
+            flex-direction: column;
+        }
+        
+        /* 🏡 トップメニュー */
+        #topPage { display: flex; gap: 4.2rem; flex-direction: row; } 
+        
+        .menu-block {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            height: 400px; 
+        }
+        
+        .main-headline {
+            font-size: 2.0rem;
+            font-weight: 500;
+            color: #2b2b2b;
+            writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;
+            letter-spacing: 0.3em;
+        }
+        
+        .sub-menu-group {
+            display: flex;
+            flex-direction: row;
+            gap: 2.8rem; 
+            margin-right: 3.5rem; 
+        }
+        
+        .sub-link {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: #555555;
+            letter-spacing: 0.2em;
+            margin-top: 4.8rem; 
+        }
+        .sub-link:hover { color: #888888; }
+
+        #haijinPage { display: none; }
+        #haikuPage .horizontal-scroll-container { display: flex; flex-direction: row-reverse; gap: 4.5rem; }
+        #saijikiPage .horizontal-scroll-container { display: flex; flex-direction: row-reverse; gap: 4.5rem; }
+
+        /* 横一列スクロールコンテナ */
+        .horizontal-scroll-container {
+            display: flex; flex-direction: row-reverse; justify-content: center; align-items: center;
+            width: 85vw; height: 65vh; overflow-x: auto; overflow-y: hidden;
+            scroll-behavior: smooth;
+        }
+        
+        #kigoList { gap: 2.2rem !important; }
+        #haijinList { gap: 4.5rem; }
+        
+        .horizontal-scroll-container::-webkit-scrollbar { height: 6px; }
+        .horizontal-scroll-container::-webkit-scrollbar-track { background: #eae8e3; border-radius: 3px; }
+        .horizontal-scroll-container::-webkit-scrollbar-thumb { background: #b5b5b5; border-radius: 3px; cursor: pointer; }
+
+        #roomPage { z-index: 5; flex-direction: row; }
+        
+        .haiku-screen { 
+            height: 100%; width: 100%; display: flex; 
+            justify-content: center; align-items: center; flex-direction: column; 
+        }
+        
+        .phrase {
+            writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;
+            font-size: 3.2vh; line-height: 1.0;
+            letter-spacing: 0.3em; font-weight: 500; white-space: nowrap; 
+            text-align: center; display: block;
+        }
+        
+        /* パンくずリスト */
+        .breadcrumb {
+            position: absolute; top: calc(25px + env(safe-area-inset-top)); left: 25px; 
+            font-size: 0.85rem; color: #666666;
+            letter-spacing: 0.05em; z-index: 20; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .breadcrumb span.link { cursor: pointer; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; }
+        .breadcrumb span.link:hover { color: #2b2b2b; border-bottom: 1px solid #2b2b2b; }
+        .breadcrumb span.separator { color: #b5b5b5; font-family: sans-serif; }
+        
+        /* 🏷️ 右上情報グループ */
+        .room-info-group { 
+            position: absolute; top: calc(25px + env(safe-area-inset-top)); right: 25px; 
+            display: flex; flex-direction: column; align-items: flex-end; gap: 8px; z-index: 20; text-align: right; 
+        }
+        
+        .info-upper-tag { font-size: 1.1rem; color: #2b2b2b; letter-spacing: 0.1em; font-weight: 500; }
+        .info-upper-tag a { color: #2b2b2b; text-decoration: none; border-bottom: 1px solid #2b2b2b; }
+        .info-lower-tag { font-size: 0.85rem; color: #777777; letter-spacing: 0.05em; opacity: 1; transition: opacity 0.3s ease; }
+        
+        #infoTrigger { 
+            position: absolute; top: calc(20px + env(safe-area-inset-top)); right: 25px; 
+            font-size: 1.2rem; color: #8c8476; cursor: pointer; z-index: 30; display: none; padding: 10px;
+        }
+        
+        /* 矢印ナビゲーションボタン（スマホ対応押しやすさ向上） */
+        .nav-arrow { 
+            position: absolute; top: 50%; transform: translateY(-50%); 
+            font-size: 2.2rem; color: #b5b5b5; cursor: pointer; 
+            padding: 25px 15px; z-index: 20; background: none; border: none; 
+            transition: color 0.2s ease;
+        }
+        .nav-arrow:hover { color: #2b2b2b; }
+        .arrow-left { left: calc(15px + env(safe-area-inset-left)); } 
+        .arrow-right { right: calc(15px + env(safe-area-inset-right)); }
+        .nav-arrow.disabled { visibility: hidden; }
+        
+        #loadingOverlay { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background-color: #faf9f6; display: flex; justify-content: center; align-items: center; 
+            z-index: 100; color: #8c8476; font-size: 14px; letter-spacing: 0.15em; 
+        }
+
+        /* 🐾 おみ句じ猫ボタン（季寄せ時のみ左下に固定表示） */
+        .fixed-cat-trigger {
+            position: fixed;
+            bottom: calc(20px + env(safe-area-inset-bottom));
+            left: calc(20px + env(safe-area-inset-left));
+            width: 140px;
+            max-width: 25vw;
+            height: auto;
+            cursor: pointer;
+            z-index: 50;
+            transition: transform 0.2s ease, opacity 0.3s ease;
+            opacity: 0.85;
+        }
+        .fixed-cat-trigger:hover { transform: scale(1.05); opacity: 1; }
+        .fixed-cat-trigger.hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="loadingOverlay">言葉の海をひらいています...</div>
+
+    <!-- 🐾 おみ句じ猫ボタン -->
+    <img id="fixedCatBtn" src="omikuji-cat.png" alt="おみ句じを引く" class="fixed-cat-trigger hidden" onclick="triggerInstantOmikuji()" title="おみ句じを引く">
+
+    <div id="globalBreadcrumb" class="breadcrumb" style="display: none;"></div>
+    <div id="infoTrigger" onclick="revealHiddenInfo()">ℹ</div>
+
+    <!-- 🏡 トップメニュー -->
+    <div id="topPage" class="layer-page">
+        <!-- おみ句じ ブロック -->
+        <div class="menu-block">
+            <div class="sub-menu-group">
+                <div class="vertical-link sub-link" onclick="openRoom('detarame', 'all', 'いっしょくた')">いっしょくた</div>
+                <div class="vertical-link sub-link" onclick="navigateTo('haijinPage')">俳人</div>
+                <div class="vertical-link sub-link" onclick="navigateTo('haikuPage')">季節</div>
+            </div>
+            <div class="vertical-link main-headline" style="cursor: default;">おみ句じ</div>
+        </div>
+        
+        <!-- 季寄せ ブロック -->
+        <div class="menu-block">
+            <div class="vertical-link main-headline" onclick="navigateTo('saijikiPage')">季寄せ</div>
+        </div>
+    </div>
+
+    <!-- おみ句じ：俳人 ページ -->
+    <div id="haijinPage" class="layer-page">
+        <div id="haijinList" class="horizontal-scroll-container"></div>
+    </div>
+
+    <!-- おみ句じ：季節 ページ -->
+    <div id="haikuPage" class="layer-page">
+        <div class="horizontal-scroll-container">
+            <div class="vertical-link" onclick="openRoom('haiku_season', 'haru', '春の句')">春</div>
+            <div class="vertical-link" onclick="openRoom('haiku_season', 'natsu', '夏の句')">夏</div>
+            <div class="vertical-link" onclick="openRoom('haiku_season', 'aki', '秋の句')">秋</div>
+            <div class="vertical-link" onclick="openRoom('haiku_season', 'huyu', '冬の句')">冬</div>
+            <div class="vertical-link" onclick="openRoom('haiku_season', 'shinnen', '新年の句')">新年</div>
+            <div class="vertical-link" onclick="openRoom('haiku_season', 'muki', '無季の句')">無季</div>
+        </div>
+    </div>
+
+    <!-- 季寄せ：季節一覧 ページ -->
+    <div id="saijikiPage" class="layer-page">
+        <div class="horizontal-scroll-container">
+            <div class="vertical-link" onclick="showKigoList('haru', '春')">春</div>
+            <div class="vertical-link" onclick="showKigoList('natsu', '夏')">夏</div>
+            <div class="vertical-link" onclick="showKigoList('aki', '秋')">秋</div>
+            <div class="vertical-link" onclick="showKigoList('huyu', '冬')">冬</div>
+            <div class="vertical-link" onclick="showKigoList('shinnen', '新年')">新年</div>
+            <div class="vertical-link" onclick="openRoom('kigo_muki', 'muki', '無季')">無季</div>
+        </div>
+    </div>
+
+    <!-- 季寄せ：親季語一覧 ページ -->
+    <div id="kigoListPage" class="layer-page">
+        <div id="kigoList" class="horizontal-scroll-container"></div>
+    </div>
+
+    <!-- 一句一画面 スクリーン部屋 -->
+    <div id="roomPage" class="layer-page">
+        <div class="room-info-group">
+            <div id="roomMainTag" class="info-upper-tag"></div>
+            <div id="roomSubTag" class="info-lower-tag"></div>
+        </div>
+        <!-- 矢印ボタン操作 -->
+        <button id="prevBtn" class="nav-arrow arrow-right" onclick="changeHaiku(-1)">＞</button> 
+        <button id="nextBtn" class="nav-arrow arrow-left" onclick="changeHaiku(1)">＜</button>  
+        <div class="haiku-screen"><p id="haikuPhrase" class="phrase"></p></div>
+    </div>
+
+    <script>
+        const SPREADSHEET_ID = '1m0y8AOJNx1Ad4I44poPheQAQNki1-QQIwi9wSw8jaBg';
+
+        let haikuDatabase = [];
+        let currentRoomHaikus = []; 
+        let currentIndex = 0;
+        let isRoomOpen = false;
+        let currentDisplayType = ''; 
+        let infoRevealed = false;
+
+        let navState = { currentLayer: 'topPage', category: '', seasonName: '', kigoName: '', authorName: '', isDetarame: false };
+
+        window.onload = function() {
+            const script = document.createElement('script');
+            script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
+            document.body.appendChild(script);
+        };
+
+        function mainDataReceived(data) {
+            try {
+                const rows = data.table.rows;
+                for (let i = 0; i < rows.length; i++) {
+                    const c = rows[i].c;
+                    if (!c || !c[0] || !c[0].v) continue;
+                    
+                    let phraseStr = String(c[0].v).trim();
+                    if (phraseStr === '俳句' || phraseStr === '句' || phraseStr === '') continue;
+
+                    let cleanSeason = c[6] && c[6].v ? String(c[6].v).trim().toLowerCase() : '';
+                    if (cleanSeason === 'sinnen') cleanSeason = 'shinnen';
+                    if (cleanSeason === 'fuyu') cleanSeason = 'huyu';
+                    if (cleanSeason === 'season' || cleanSeason === '季節') continue;
+
+                    haikuDatabase.push({
+                        phrase: phraseStr,      
+                        author: c[1] && c[1].v ? String(c[1].v).trim() : '作者不詳',      
+                        authorKana: c[2] && c[2].v ? String(c[2].v).trim() : '',  
+                        kigo: c[3] && c[3].v ? String(c[3].v).trim() : '',        
+                        parentKigo: c[4] && c[4].v ? String(c[4].v).trim() : '',  
+                        kigoKana: c[5] && c[5].v ? String(c[5].v).trim() : '',    
+                        season: cleanSeason,                                      
+                        detailSeason: c[7] && c[7].v ? String(c[7].v).trim() : '' 
+                    });
+                }
+                if (haikuDatabase.length > 0) {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    launchOmikuji();
+                    createHaijinList();
+                } else {
+                    document.getElementById('loadingOverlay').innerText = 'データが空か、解析に失敗しました。';
+                }
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loadingOverlay').innerText = 'システムエラーが発生しました。';
+            }
+        }
+
+        function launchOmikuji() {
+            currentDisplayType = 'detarame';
+            navState.category = 'omikuji_all';
+            navState.isDetarame = true;
+            
+            currentRoomHaikus = [...haikuDatabase]; 
+            shuffleArray(currentRoomHaikus);
+            
+            currentIndex = 0; 
+            renderPage('roomPage'); 
+            updateHaikuDisplay();
+        }
+
+        function triggerInstantOmikuji() {
+            launchOmikuji();
+        }
+
+        function updateBreadcrumb() {
+            const container = document.getElementById('globalBreadcrumb');
+            if (navState.currentLayer === 'topPage') {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'flex';
+            let html = `<span class="link" onclick="renderPage('topPage')">home</span>`;
+            
+            if (navState.category === 'omikuji_all') {
+                html += ` <span class="separator">&lt;</span> <span class="current">おみ句じ</span>`;
+            } else if (navState.category === 'haijin') {
+                html += ` <span class="separator">&lt;</span> <span class="link" onclick="renderPage('haijinPage')">おみ句じ（俳人）</span>`;
+                if (navState.currentLayer === 'roomPage') html += ` <span class="separator">&lt;</span> <span class="current">${navState.authorName}</span>`;
+            } else if (navState.category === 'haiku') {
+                html += ` <span class="separator">&lt;</span> <span class="link" onclick="renderPage('haikuPage')">おみ句じ（季節）</span>`;
+                if (navState.currentLayer === 'roomPage') html += ` <span class="separator">&lt;</span> <span class="current">${navState.seasonName}</span>`;
+            } else if (navState.category === 'saijiki') {
+                html += ` <span class="separator">&lt;</span> <span class="link" onclick="renderPage('saijikiPage')">季寄せ</span>`;
+                if (currentDisplayType !== 'kigo_muki') {
+                    if (navState.currentLayer === 'kigoListPage' || navState.currentLayer === 'roomPage') {
+                        html += ` <span class="separator">&lt;</span> <span class="link" onclick="showKigoList(getSeasonCode('${navState.seasonName}'), '${navState.seasonName}')">${navState.seasonName}</span>`;
+                    }
+                }
+                if (navState.currentLayer === 'roomPage') {
+                    html += ` <span class="separator">&lt;</span> <span class="current">${navState.kigoName}</span>`;
+                }
+            }
+            container.innerHTML = html;
+        }
+
+        function renderPage(pageId) {
+            document.querySelectorAll('.layer-page').forEach(page => page.style.display = 'none');
+            const target = document.getElementById(pageId);
+            if(target) target.style.display = 'flex';
+            document.getElementById('infoTrigger').style.display = 'none';
+            navState.currentLayer = pageId;
+            
+            if (pageId === 'topPage') { navState.category = ''; navState.isDetarame = false; }
+            else if (pageId === 'haijinPage') navState.category = 'haijin';
+            else if (pageId === 'haikuPage') navState.category = 'haiku';
+            else if (pageId === 'saijikiPage') navState.category = 'saijiki';
+            
+            isRoomOpen = (pageId === 'roomPage');
+
+            // 🐾 おみくじ猫ボタンの制御（季寄せモード内でのみ表示）
+            const catBtn = document.getElementById('fixedCatBtn');
+            if (navState.category === 'saijiki') {
+                catBtn.classList.remove('hidden');
+            } else {
+                catBtn.classList.add('hidden');
+            }
+
+            updateBreadcrumb();
+        }
+
+        function navigateTo(pageId) { renderPage(pageId); }
+        function getSeasonNameJa(code) { const map = {'haru':'春', 'natsu':'夏', 'aki':'秋', 'huyu':'冬', 'shinnen':'新年', 'muki':'無季'}; return map[code] || code; }
+        function getSeasonCode(name) { const map = {'春':'haru', '夏':'natsu', '秋':'aki', '冬':'huyu', '新年':'shinnen', '無季':'muki'}; return map[name] || ''; }
+
+        function createHaijinList() {
+            const container = document.getElementById('haijinList'); container.innerHTML = '';
+            let authorMap = {};
+            haikuDatabase.forEach(item => { if (!authorMap[item.author]) authorMap[item.author] = item.authorKana || item.author; });
+            let uniqueAuthors = Object.keys(authorMap);
+            uniqueAuthors.sort((a, b) => authorMap[a].localeCompare(authorMap[b], 'ja'));
+            uniqueAuthors.forEach(author => {
+                const el = document.createElement('div'); el.className = 'vertical-link'; el.innerText = author; 
+                el.onclick = function() { jumpToAuthorRoom(author); };
+                container.appendChild(el);
+            });
+            container.style.justifyContent = (uniqueAuthors.length > 5) ? 'flex-start' : 'center';
+        }
+
+        function jumpToAuthorRoom(author) {
+            navState.authorName = author;
+            openRoom('author', author, author);
+        }
+
+        function showKigoList(seasonCode, seasonName) {
+            navState.seasonName = seasonName; navState.category = 'saijiki';
+            const container = document.getElementById('kigoList'); container.innerHTML = '';
+            
+            let kigoMap = {};
+            haikuDatabase.forEach(item => { 
+                if (item.season === seasonCode) { 
+                    let targetKigo = item.parentKigo || item.kigo;
+                    if (targetKigo && !kigoMap[targetKigo]) {
+                        kigoMap[targetKigo] = item.kigoKana || targetKigo; 
+                    }
+                } 
+            });
+            
+            let uniqueKigos = Object.keys(kigoMap);
+            if (uniqueKigos.length === 0) { alert('まだこの季節の季語が登録されていません。'); return; }
+            uniqueKigos.sort((a, b) => kigoMap[a].localeCompare(kigoMap[b], 'ja'));
+            uniqueKigos.forEach(kigo => {
+                const el = document.createElement('div'); el.className = 'vertical-link'; el.innerText = kigo;
+                el.onclick = function() { navState.kigoName = kigo; openRoom('kigo', kigo, kigo); }; 
+                container.appendChild(el);
+            });
+            container.style.justifyContent = (uniqueKigos.length > 8) ? 'flex-start' : 'center';
+            renderPage('kigoListPage');
+        }
+
+        function openRoom(type, targetValue, displayName) {
+            currentDisplayType = type; 
+            if (type === 'author') { navState.category = 'haijin'; navState.isDetarame = false; currentRoomHaikus = haikuDatabase.filter(item => item.author === targetValue); shuffleArray(currentRoomHaikus); }
+            else if (type === 'haiku_season') { navState.category = 'haiku'; navState.seasonName = displayName; navState.isDetarame = false; currentRoomHaikus = haikuDatabase.filter(item => item.season === targetValue); shuffleArray(currentRoomHaikus); }
+            else if (type === 'kigo') { navState.category = 'saijiki'; navState.isDetarame = false; currentRoomHaikus = haikuDatabase.filter(item => (item.parentKigo === targetValue || item.kigo === targetValue)); shuffleArray(currentRoomHaikus); }
+            else if (type === 'detarame') { navState.category = 'omikuji_all'; navState.isDetarame = true; currentRoomHaikus = [...haikuDatabase]; shuffleArray(currentRoomHaikus); }
+            else if (type === 'kigo_muki') { navState.category = 'saijiki'; navState.seasonName = '無季'; navState.kigoName = '無季'; navState.isDetarame = false; currentRoomHaikus = haikuDatabase.filter(item => item.season === 'muki'); shuffleArray(currentRoomHaikus); }
+            
+            if (currentRoomHaikus.length === 0) { alert('まだ条件に合う俳句が登録されていません。'); return; }
+            currentIndex = 0; renderPage('roomPage'); updateHaikuDisplay();
+        }
+
+        function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } }
+        function changeHaiku(direction) { if (currentIndex + direction >= 0 && currentIndex + direction < currentRoomHaikus.length) { currentIndex += direction; updateHaikuDisplay(); } }
+
+        function revealHiddenInfo() {
+            infoRevealed = true; 
+            document.getElementById('infoTrigger').style.display = 'none';
+            const currentHaiku = currentRoomHaikus[currentIndex];
+            
+            let kigoInfo = (currentHaiku.season === 'muki') ? '無季' : (currentHaiku.parentKigo || currentHaiku.kigo) + (currentHaiku.detailSeason ? `（${currentHaiku.detailSeason}）` : '');
+            document.getElementById('roomMainTag').innerText = kigoInfo;
+            document.getElementById('roomSubTag').innerHTML = `<a href="javascript:void(0);" onclick="jumpToAuthorRoom('${currentHaiku.author}')">${currentHaiku.author}</a>`;
+            
+            document.getElementById('roomSubTag').style.opacity = '1';
+            updateBreadcrumb();
+        }
+
+        function updateHaikuDisplay() {
+            const currentHaiku = currentRoomHaikus[currentIndex];
+            document.getElementById('haikuPhrase').innerText = currentHaiku.phrase;
+            
+            let kigoString = '';
+            if (currentHaiku.season === 'muki') {
+                kigoString = '無季';
+            } else {
+                let pKigo = currentHaiku.parentKigo || currentHaiku.kigo;
+                let dSeason = currentHaiku.detailSeason ? `（${currentHaiku.detailSeason}）` : '';
+                kigoString = pKigo + dSeason;
+            }
+
+            if (navState.category === 'omikuji_all') {
+                infoRevealed = false; 
+                document.getElementById('roomMainTag').innerText = ''; 
+                document.getElementById('roomSubTag').innerText = '';
+                document.getElementById('roomSubTag').style.opacity = '0'; 
+                document.getElementById('infoTrigger').style.display = 'block';
+            } 
+            else if (currentDisplayType === 'kigo' || currentDisplayType === 'kigo_muki') {
+                document.getElementById('infoTrigger').style.display = 'none'; 
+                document.getElementById('roomSubTag').style.opacity = '1';
+                
+                const mainTag = document.getElementById('roomMainTag');
+                mainTag.className = 'info-lower-tag';
+                mainTag.innerText = (currentDisplayType === 'kigo_muki') ? '無季' : '季語：' + kigoString;
+                
+                const subTag = document.getElementById('roomSubTag');
+                subTag.className = 'info-upper-tag';
+                subTag.innerText = currentHaiku.author;
+            } 
+            else {
+                document.getElementById('infoTrigger').style.display = 'none'; 
+                document.getElementById('roomSubTag').style.opacity = '1';
+                
+                document.getElementById('roomMainTag').className = 'info-upper-tag';
+                document.getElementById('roomSubTag').className = 'info-lower-tag';
+                
+                document.getElementById('roomMainTag').innerText = kigoString;
+                document.getElementById('roomSubTag').innerText = currentHaiku.author;
+            }
+
+            if (currentIndex === 0) document.getElementById('prevBtn').classList.add('disabled'); else document.getElementById('prevBtn').classList.remove('disabled');
+            if (currentIndex === currentRoomHaikus.length - 1) document.getElementById('nextBtn').classList.add('disabled'); else document.getElementById('nextBtn').classList.remove('disabled');
+            
+            updateBreadcrumb();
+        }
+
+        // キーボード操作対応（MacBook用）
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'o' || event.key === 'O') {
+                triggerInstantOmikuji();
+                return;
+            }
+
+            if (!isRoomOpen) return;
+            if (event.key === 'ArrowLeft') changeHaiku(1); 
+            if (event.key === 'ArrowRight') changeHaiku(-1); 
+            if (event.key === 'i' || event.key === 'I') { if (navState.category === 'omikuji_all' && !infoRevealed) revealHiddenInfo(); }
+        });
+    </script>
+</body>
+</html>
