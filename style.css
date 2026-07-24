@@ -113,7 +113,7 @@ body, html {
     flex-direction: column;
     gap: 8px;
     z-index: 30;
-    pointer-events: none; /* テキスト以外は下の要素をタップ可能 */
+    pointer-events: none;
 }
 
 .header-row-top {
@@ -168,22 +168,23 @@ body, html {
     pointer-events: auto;
 }
 
-/* 🏹 矢印ナビゲーションボタン（下部へ拡大 ＋ 広範囲押しやすさUP） */
+/* 🏹 矢印ナビゲーションボタン（中央配置 ＆ 控えめな小ぶりサイズ） */
 .nav-arrow { 
     position: absolute;
-    bottom: calc(40px + env(safe-area-inset-bottom)); /* 位置を画面下寄りへ調整 */
-    font-size: 1.5rem;
-    color: #8c8476;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.0rem; /* 小ぶりに調整 */
+    color: #a0998c;
     cursor: pointer; 
-    padding: 35px 25px; /* タップ判定エリアを上下左右に大幅拡大 */
+    padding: 20px 15px; /* 押しやすさは確保 */
     z-index: 25;
     background: none;
     border: none; 
     transition: color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
-    opacity: 0.75;
+    opacity: 0.6;
     user-select: none;
 }
-.nav-arrow:active { transform: scale(0.9); }
+.nav-arrow:active { transform: translateY(-50%) scale(0.9); }
 .nav-arrow:hover { color: #2b2b2b; opacity: 1; }
 
 .arrow-left { left: calc(5px + env(safe-area-inset-left)); } 
