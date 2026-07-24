@@ -89,7 +89,7 @@ body, html {
 .horizontal-scroll-container::-webkit-scrollbar-track { background: #eae8e3; border-radius: 3px; }
 .horizontal-scroll-container::-webkit-scrollbar-thumb { background: #b5b5b5; border-radius: 3px; cursor: pointer; }
 
-#roomPage { z-index: 5; flex-direction: row; }
+#roomPage { z-index: 5; flex-direction: row; touch-action: pan-y; }
 
 .haiku-screen { 
     height: 100%; width: 100%; display: flex; 
@@ -103,58 +103,91 @@ body, html {
     text-align: center; display: block;
 }
 
-/* 🧭 パンくずリスト */
+/* 🧭 グローバルヘッダー（パンくず上段 ＋ 右上情報下段） */
+.global-header-area {
+    position: absolute;
+    top: calc(15px + env(safe-area-inset-top));
+    left: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 30;
+    pointer-events: none; /* テキスト以外は下の要素をタップ可能 */
+}
+
+.header-row-top {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+}
+
+.header-row-bottom {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+    min-height: 24px;
+}
+
 .breadcrumb {
-    position: absolute; 
-    top: calc(20px + env(safe-area-inset-top)); 
-    left: 20px; 
-    right: 140px; 
     font-size: 0.82rem; 
     color: #666666;
     letter-spacing: 0.05em; 
-    z-index: 20; 
     display: flex; 
     flex-wrap: wrap; 
     align-items: center; 
     gap: 0.2rem 0.4rem;
     line-height: 1.3;
+    pointer-events: auto;
+    max-width: 100%;
 }
 .breadcrumb span.link { cursor: pointer; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; white-space: nowrap; }
 .breadcrumb span.link:hover { color: #2b2b2b; border-bottom: 1px solid #2b2b2b; }
 .breadcrumb span.separator { color: #b5b5b5; font-family: sans-serif; }
 .breadcrumb span.current { white-space: nowrap; }
 
-/* 🏷️ 右上情報グループ */
-.room-info-group { 
-    position: absolute; 
-    top: calc(20px + env(safe-area-inset-top)); 
-    right: 20px; 
-    display: flex; 
-    flex-direction: column; 
-    align-items: flex-end; 
-    z-index: 20; 
-    text-align: right; 
+/* 🏷️ 右上情報タグ */
+.info-upper-tag {
+    font-size: 1.05rem;
+    color: #2b2b2b;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+    white-space: nowrap;
+    text-align: right;
+    pointer-events: auto;
 }
-
-.info-upper-tag { font-size: 1.05rem; color: #2b2b2b; letter-spacing: 0.1em; font-weight: 500; white-space: nowrap; }
 .info-upper-tag a { color: #2b2b2b; text-decoration: none; border-bottom: 1px solid #2b2b2b; }
 
 #infoTrigger { 
-    position: absolute; top: calc(18px + env(safe-area-inset-top)); right: 20px; 
-    font-size: 1.1rem; color: #8c8476; cursor: pointer; z-index: 30; display: none; padding: 10px;
+    font-size: 1.1rem;
+    color: #8c8476;
+    cursor: pointer;
+    display: none;
+    padding: 2px 8px;
+    pointer-events: auto;
 }
 
-/* 矢印ナビゲーションボタン */
+/* 🏹 矢印ナビゲーションボタン（下部へ拡大 ＋ 広範囲押しやすさUP） */
 .nav-arrow { 
-    position: absolute; top: 50%; transform: translateY(-50%); 
-    font-size: 1.2rem; color: #8c8476; cursor: pointer; 
-    padding: 20px 15px; z-index: 20; background: none; border: none; 
-    transition: color 0.2s ease, opacity 0.2s ease;
-    opacity: 0.7;
+    position: absolute;
+    bottom: calc(40px + env(safe-area-inset-bottom)); /* 位置を画面下寄りへ調整 */
+    font-size: 1.5rem;
+    color: #8c8476;
+    cursor: pointer; 
+    padding: 35px 25px; /* タップ判定エリアを上下左右に大幅拡大 */
+    z-index: 25;
+    background: none;
+    border: none; 
+    transition: color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+    opacity: 0.75;
+    user-select: none;
 }
+.nav-arrow:active { transform: scale(0.9); }
 .nav-arrow:hover { color: #2b2b2b; opacity: 1; }
-.arrow-left { left: calc(10px + env(safe-area-inset-left)); } 
-.arrow-right { right: calc(10px + env(safe-area-inset-right)); }
+
+.arrow-left { left: calc(5px + env(safe-area-inset-left)); } 
+.arrow-right { right: calc(5px + env(safe-area-inset-right)); }
 .nav-arrow.disabled { visibility: hidden; }
 
 #loadingOverlay { 
