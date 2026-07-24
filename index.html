@@ -23,13 +23,21 @@
 </head>
 <body>
 
-    <div id="loadingOverlay">言葉の海をひらいています...</div>
+    <div id="loadingOverlay">おみ句じを振っています...</div>
 
     <!-- 🐾 おみ句じ猫ボタン -->
     <img id="fixedCatBtn" src="omikuji-cat.png" alt="おみ句じを引く" class="fixed-cat-trigger hidden" onclick="triggerInstantOmikuji()" title="おみ句じを引く">
 
-    <div id="globalBreadcrumb" class="breadcrumb" style="display: none;"></div>
-    <div id="infoTrigger" onclick="revealHiddenInfo()">ℹ</div>
+    <!-- 2段構造のグローバルヘッダー領域 -->
+    <div id="headerArea" class="global-header-area">
+        <div class="header-row-top">
+            <div id="globalBreadcrumb" class="breadcrumb" style="display: none;"></div>
+        </div>
+        <div class="header-row-bottom">
+            <div id="roomMainTag" class="info-upper-tag"></div>
+            <div id="infoTrigger" onclick="revealHiddenInfo()">ℹ</div>
+        </div>
+    </div>
 
     <!-- 🏡 トップメニュー -->
     <div id="topPage" class="layer-page">
@@ -85,9 +93,6 @@
 
     <!-- 一句一画面 スクリーン部屋 -->
     <div id="roomPage" class="layer-page">
-        <div class="room-info-group">
-            <div id="roomMainTag" class="info-upper-tag"></div>
-        </div>
         <button id="prevBtn" class="nav-arrow arrow-right" onclick="changeHaiku(-1)">＞</button> 
         <button id="nextBtn" class="nav-arrow arrow-left" onclick="changeHaiku(1)">＜</button>  
         <div class="haiku-screen"><p id="haikuPhrase" class="phrase"></p></div>
