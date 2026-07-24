@@ -9,6 +9,10 @@ let infoRevealed = false;
 
 let navState = { currentLayer: 'topPage', category: '', seasonName: '', kigoName: '', authorName: '', isDetarame: false };
 
+// スワイプ（フリック）検知変数
+let touchStartX = 0;
+let touchStartY = 0;
+
 window.onload = function() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -17,6 +21,9 @@ window.onload = function() {
     const script = document.createElement('script');
     script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
     document.body.appendChild(script);
+
+    // スワイプイベントの登録
+    initSwipeEvents();
 };
 
 function mainDataReceived(data) {
@@ -222,7 +229,7 @@ function updateHaikuDisplay() {
     if (navState.category === 'omikuji_all') {
         infoRevealed = false; 
         document.getElementById('roomMainTag').innerText = ''; 
-        document.getElementById('infoTrigger').style.display = 'block';
+        document.getElementById('infoTrigger').style.display = 'inline-block';
     } 
     // 1. 「俳人」カテゴリーのみ：右上に「季語＋（詳細季節）」を表示
     else if (navState.category === 'haijin') {
@@ -243,6 +250,38 @@ function updateHaikuDisplay() {
     if (currentIndex === currentRoomHaikus.length - 1) document.getElementById('nextBtn').classList.add('disabled'); else document.getElementById('nextBtn').classList.remove('disabled');
     
     updateBreadcrumb();
+}
+
+// 📱 スワイプ（フリック）操作の感度ロジック
+function initSwipeEvents() {
+    const room = document.getElementById('roomPage');
+    if (!room) return;
+
+    room.addEventListener('touchstart', function(e) {
+        if (!isRoomOpen) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    room.addEventListener('touchend', function(e) {
+        if (!isRoomOpen) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+
+        const diffX = touchEndX - touchStartX;
+        const diffY = touchEndY - touchStartY;
+
+        // 横方向のスワイプ幅が35px以上、かつ縦スクロール誤作動防止（横移動が縦移動より大きい場合）
+        if (Math.abs(diffX) > 35 && Math.abs(diffX) > Math.abs(diffY)) {
+            if (diffX > 0) {
+                // 右方向スワイプ ➔ 次の句へ進む（日本語縦書き感性）
+                changeHaiku(1);
+            } else {
+                // 左方向スワイプ ➔ 前の句へ戻る
+                changeHaiku(-1);
+            }
+        }
+    }, { passive: true });
 }
 
 // キーボード操作対応
