@@ -9,7 +9,7 @@ let infoRevealed = false;
 
 let navState = { currentLayer: 'topPage', category: '', seasonName: '', kigoName: '', authorName: '', isDetarame: false };
 
-// スワイプ（フリック）検知変数
+// スワイプ検知変数
 let touchStartX = 0;
 let touchStartY = 0;
 
@@ -18,6 +18,10 @@ window.onload = function() {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
     }
 
+    // 1. キャッシュデータの即時復元（オフライン・爆速起動対策）
+    restoreCachedHaikuDatabase();
+
+    // 2. スプレッドシートから最新データの非同期取得
     const script = document.createElement('script');
     script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
     document.body.appendChild(script);
@@ -26,9 +30,28 @@ window.onload = function() {
     initSwipeEvents();
 };
 
+// ローカルストレージからのキャッシュ復元
+function restoreCachedHaikuDatabase() {
+    try {
+        const cachedData = localStorage.getItem('omikuji_haikuDatabase');
+        if (cachedData) {
+            haikuDatabase = JSON.parse(cachedData);
+            if (haikuDatabase.length > 0) {
+                document.getElementById('loadingOverlay').style.display = 'none';
+                launchOmikuji();
+                createHaijinList();
+            }
+        }
+    } catch (e) {
+        console.error('キャッシュ復元エラー:', e);
+    }
+}
+
 function mainDataReceived(data) {
     try {
         const rows = data.table.rows;
+        let freshDatabase = [];
+
         for (let i = 0; i < rows.length; i++) {
             const c = rows[i].c;
             if (!c || !c[0] || !c[0].v) continue;
@@ -41,7 +64,7 @@ function mainDataReceived(data) {
             if (cleanSeason === 'fuyu') cleanSeason = 'huyu';
             if (cleanSeason === 'season' || cleanSeason === '季節') continue;
 
-            haikuDatabase.push({
+            freshDatabase.push({
                 phrase: phraseStr,      
                 author: c[1] && c[1].v ? String(c[1].v).trim() : '作者不詳',      
                 authorKana: c[2] && c[2].v ? String(c[2].v).trim() : '',  
@@ -52,16 +75,27 @@ function mainDataReceived(data) {
                 detailSeason: c[7] && c[7].v ? String(c[7].v).trim() : '' 
             });
         }
-        if (haikuDatabase.length > 0) {
+
+        if (freshDatabase.length > 0) {
+            haikuDatabase = freshDatabase;
+            // ローカルストレージへ保存（次回オフライン用）
+            localStorage.setItem('omikuji_haikuDatabase', JSON.stringify(haikuDatabase));
+
             document.getElementById('loadingOverlay').style.display = 'none';
-            launchOmikuji();
-            createHaijinList();
-        } else {
+            
+            // キャッシュがなくて初回起動だった場合のみ画面初期化
+            if (!isRoomOpen && navState.currentLayer === 'topPage' && currentRoomHaikus.length === 0) {
+                launchOmikuji();
+                createHaijinList();
+            }
+        } else if (haikuDatabase.length === 0) {
             document.getElementById('loadingOverlay').innerText = 'データが空か、解析に失敗しました。';
         }
     } catch (error) {
         console.error(error);
-        document.getElementById('loadingOverlay').innerText = 'システムエラーが発生しました。';
+        if (haikuDatabase.length === 0) {
+            document.getElementById('loadingOverlay').innerText = 'システムエラーが発生しました。';
+        }
     }
 }
 
@@ -271,13 +305,10 @@ function initSwipeEvents() {
         const diffX = touchEndX - touchStartX;
         const diffY = touchEndY - touchStartY;
 
-        // 横方向のスワイプ幅が35px以上、かつ縦スクロール誤作動防止（横移動が縦移動より大きい場合）
         if (Math.abs(diffX) > 35 && Math.abs(diffX) > Math.abs(diffY)) {
             if (diffX > 0) {
-                // 右方向スワイプ ➔ 次の句へ進む（日本語縦書き感性）
                 changeHaiku(1);
             } else {
-                // 左方向スワイプ ➔ 前の句へ戻る
                 changeHaiku(-1);
             }
         }
