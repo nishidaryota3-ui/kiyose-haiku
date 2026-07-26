@@ -1,224 +1,370 @@
-/* 画面全体の初期化 */
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body, html {
-    background-color: #faf9f6; color: #2b2b2b;
-    font-family: "游明朝", "Yu Mincho", "ヒラギノ明朝 ProN", "Hiragino Mincho ProN", "Shippori Mincho", "MS P明朝", serif;
-    overflow: hidden; height: 100%; width: 100%;
-    user-select: none; -webkit-user-select: none;
+const SPREADSHEET_ID = '1m0y8AOJNx1Ad4I44poPheQAQNki1-QQIwi9wSw8jaBg';
+
+let haikuDatabase = [];
+let currentRoomHaikus = []; 
+let currentIndex = 0;
+let isRoomOpen = false;
+let currentDisplayType = ''; 
+let infoRevealed = false;
+
+let navState = { currentLayer: 'topPage', category: '', seasonName: '', kigoName: '', authorName: '', isDetarame: false };
+
+// スワイプ検知変数
+let touchStartX = 0;
+let touchStartY = 0;
+
+window.onload = function() {
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+
+    restoreCachedHaikuDatabase();
+
+    const script = document.createElement('script');
+    script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
+    document.body.appendChild(script);
+
+    initSwipeEvents();
+};
+
+function restoreCachedHaikuDatabase() {
+    try {
+        const cachedData = localStorage.getItem('omikuji_haikuDatabase');
+        if (cachedData) {
+            haikuDatabase = JSON.parse(cachedData);
+            if (haikuDatabase.length > 0) {
+                hideLoadingOverlay();
+                launchOmikuji();
+                createHaijinList();
+            }
+        }
+    } catch (e) {
+        console.error('キャッシュ復元エラー:', e);
+    }
 }
 
-.vertical-link {
-    writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;
-    font-size: clamp(1.1rem, 4vw, 1.4rem); letter-spacing: 0.25em;
-    cursor: pointer; transition: color 0.3s ease; white-space: nowrap;
-}
-.vertical-link:hover { color: #888888; }
-
-.layer-page {
-    position: absolute; top: 0; left: 0; height: 100%; width: 100%;
-    display: none; justify-content: center; align-items: center; padding: 10vh 5vw;
-    flex-direction: column;
+function hideLoadingOverlay() {
+    const el = document.getElementById('loadingOverlay');
+    if (el) el.style.display = 'none';
 }
 
-/* 🏡 トップメニュー */
-#topPage { 
-    display: flex; 
-    gap: clamp(1.5rem, 5vw, 3.5rem); 
-    flex-direction: row; 
-    justify-content: center;
-    align-items: center;
-    max-width: 95vw;
-} 
+function mainDataReceived(data) {
+    try {
+        if (!data || !data.table || !data.table.rows) return;
+        const rows = data.table.rows;
+        let freshDatabase = [];
 
-.menu-block {
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    height: clamp(280px, 50vh, 380px); 
+        for (let i = 0; i < rows.length; i++) {
+            const c = rows[i].c;
+            if (!c || !c[0] || !c[0].v) continue;
+            
+            let phraseStr = String(c[0].v).trim();
+            if (phraseStr === '俳句' || phraseStr === '句' || phraseStr === '') continue;
+
+            let cleanSeason = c[6] && c[6].v ? String(c[6].v).trim().toLowerCase() : '';
+            if (cleanSeason === 'sinnen') cleanSeason = 'shinnen';
+            if (cleanSeason === 'fuyu') cleanSeason = 'huyu';
+            if (cleanSeason === 'season' || cleanSeason === '季節') continue;
+
+            freshDatabase.push({
+                phrase: phraseStr,      
+                author: c[1] && c[1].v ? String(c[1].v).trim() : '作者不詳',      
+                authorKana: c[2] && c[2].v ? String(c[2].v).trim() : '',  
+                kigo: c[3] && c[3].v ? String(c[3].v).trim() : '',        
+                parentKigo: c[4] && c[4].v ? String(c[4].v).trim() : '',  
+                kigoKana: c[5] && c[5].v ? String(c[5].v).trim() : '',    
+                season: cleanSeason,                                      
+                detailSeason: c[7] && c[7].v ? String(c[7].v).trim() : '' 
+            });
+        }
+
+        if (freshDatabase.length > 0) {
+            haikuDatabase = freshDatabase;
+            localStorage.setItem('omikuji_haikuDatabase', JSON.stringify(haikuDatabase));
+
+            hideLoadingOverlay();
+            
+            if (!isRoomOpen && navState.currentLayer === 'topPage' && currentRoomHaikus.length === 0) {
+                launchOmikuji();
+                createHaijinList();
+            }
+        } else if (haikuDatabase.length === 0) {
+            const el = document.getElementById('loadingOverlay');
+            if (el) el.innerText = 'データが空か、解析に失敗しました。';
+        }
+    } catch (error) {
+        console.error(error);
+        if (haikuDatabase.length === 0) {
+            const el = document.getElementById('loadingOverlay');
+            if (el) el.innerText = 'システムエラーが発生しました。';
+        }
+    }
 }
 
-.main-headline {
-    font-size: clamp(1.5rem, 5vw, 1.9rem);
-    font-weight: 500;
-    color: #2b2b2b;
-    writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;
-    letter-spacing: 0.25em;
+function launchOmikuji() {
+    currentDisplayType = 'detarame';
+    navState.category = 'omikuji_all';
+    navState.isDetarame = true;
+    
+    currentRoomHaikus = [...haikuDatabase]; 
+    shuffleArray(currentRoomHaikus);
+    
+    currentIndex = 0; 
+    renderPage('roomPage'); 
+    updateHaikuDisplay();
 }
 
-.sub-menu-group {
-    display: flex;
-    flex-direction: row;
-    gap: clamp(1.0rem, 3.5vw, 2.2rem); 
-    margin-right: clamp(1.2rem, 3.5vw, 2.5rem); 
+function triggerInstantOmikuji() {
+    launchOmikuji();
 }
 
-.sub-link {
-    font-size: clamp(1.1rem, 3.8vw, 1.35rem);
-    font-weight: 500;
-    color: #555555;
-    letter-spacing: 0.2em;
-    margin-top: clamp(2.5rem, 8vh, 4.0rem); 
-}
-.sub-link:hover { color: #888888; }
+function updateBreadcrumb() {
+    const container = document.getElementById('globalBreadcrumb');
+    if (!container) return;
 
-#haijinPage { display: none; }
-#haikuPage .horizontal-scroll-container { display: flex; flex-direction: row-reverse; gap: clamp(1.2rem, 3vw, 3.5rem); }
-
-/* 季寄せ（季節選択）：スクロールなしで1画面にすっきり収めるコンテナ */
-#saijikiPage .fits-screen-container { 
-    display: flex; 
-    flex-direction: row-reverse; 
-    justify-content: center; 
-    align-items: center;
-    gap: clamp(1.2rem, 4vw, 2.8rem); 
-    width: 100%;
-    height: 60vh;
-}
-
-/* 横一列スクロールコンテナ */
-.horizontal-scroll-container {
-    display: flex; flex-direction: row-reverse; justify-content: center; align-items: center;
-    width: 85vw; height: 65vh; overflow-x: auto; overflow-y: hidden;
-    scroll-behavior: smooth;
-}
-
-#kigoList { gap: 1.8rem !important; }
-#haijinList { gap: 3.5rem; }
-
-.horizontal-scroll-container::-webkit-scrollbar { height: 6px; }
-.horizontal-scroll-container::-webkit-scrollbar-track { background: #eae8e3; border-radius: 3px; }
-.horizontal-scroll-container::-webkit-scrollbar-thumb { background: #b5b5b5; border-radius: 3px; cursor: pointer; }
-
-#roomPage { z-index: 5; flex-direction: row; touch-action: pan-y; }
-
-.haiku-screen { 
-    height: 100%; width: 100%; display: flex; 
-    justify-content: center; align-items: center; flex-direction: column; 
+    if (navState.currentLayer === 'topPage') {
+        container.style.display = 'none';
+        return;
+    }
+    container.style.display = 'flex';
+    let html = `<span class="link" onclick="renderPage('topPage')">home</span>`;
+    
+    if (navState.category === 'omikuji_all') {
+        html += ` <span class="separator">&lt;</span> <span class="current">おみ句じ</span>`;
+    } else if (navState.category === 'haijin') {
+        html += ` <span class="separator">&lt;</span> <span class="link" onclick="renderPage('haijinPage')">おみ句じ（俳人）</span>`;
+        if (navState.currentLayer === 'roomPage') html += ` <span class="separator">&lt;</span> <span class="current">${navState.authorName}</span>`;
+    } else if (navState.category === 'haiku') {
+        html += ` <span class="separator">&lt;</span> <span class="link" onclick="renderPage('haikuPage')">おみ句じ（季節）</span>`;
+        if (navState.currentLayer === 'roomPage') html += ` <span class="separator">&lt;</span> <span class="current">${navState.seasonName}</span>`;
+    } else if (navState.category === 'saijiki') {
+        html += ` <span class="separator">&lt;</span> <span class="link" onclick="renderPage('saijikiPage')">季寄せ</span>`;
+        if (currentDisplayType !== 'kigo_muki') {
+            if (navState.currentLayer === 'kigoListPage' || navState.currentLayer === 'roomPage') {
+                html += ` <span class="separator">&lt;</span> <span class="link" onclick="showKigoList(getSeasonCode('${navState.seasonName}'), '${navState.seasonName}')">${navState.seasonName}</span>`;
+            }
+        }
+        if (navState.currentLayer === 'roomPage') {
+            const currentHaiku = currentRoomHaikus[currentIndex];
+            let detailSuffix = (currentHaiku && currentHaiku.detailSeason) ? `（${currentHaiku.detailSeason}）` : '';
+            html += ` <span class="separator">&lt;</span> <span class="current">${navState.kigoName}${detailSuffix}</span>`;
+        }
+    }
+    container.innerHTML = html;
 }
 
-.phrase {
-    writing-mode: vertical-rl; -webkit-writing-mode: vertical-rl;
-    font-size: 3.2vh; line-height: 1.0;
-    letter-spacing: 0.3em; font-weight: 500; white-space: nowrap; 
-    text-align: center; display: block;
+function renderPage(pageId) {
+    document.querySelectorAll('.layer-page').forEach(page => page.style.display = 'none');
+    const target = document.getElementById(pageId);
+    if(target) target.style.display = 'flex';
+    
+    // 部屋画面（句の表示）以外に戻った際は、右上の情報表示を消去
+    if (pageId !== 'roomPage') {
+        const infoTrigger = document.getElementById('infoTrigger');
+        const mainTag = document.getElementById('roomMainTag');
+        if (infoTrigger) infoTrigger.style.display = 'none';
+        if (mainTag) mainTag.innerText = '';
+    }
+    
+    navState.currentLayer = pageId;
+    
+    if (pageId === 'topPage') { navState.category = ''; navState.isDetarame = false; }
+    else if (pageId === 'haijinPage') navState.category = 'haijin';
+    else if (pageId === 'haikuPage') navState.category = 'haiku';
+    else if (pageId === 'saijikiPage') navState.category = 'saijiki';
+    
+    isRoomOpen = (pageId === 'roomPage');
+
+    const catBtn = document.getElementById('fixedCatBtn');
+    if (catBtn) {
+        if (navState.category === 'saijiki') {
+            catBtn.classList.remove('hidden');
+        } else {
+            catBtn.classList.add('hidden');
+        }
+    }
+
+    updateBreadcrumb();
 }
 
-/* 🧭 グローバルヘッダー（パンくず上段 ＋ 右上情報下段） */
-.global-header-area {
-    position: absolute;
-    top: calc(15px + env(safe-area-inset-top));
-    left: 20px;
-    right: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    z-index: 30;
-    pointer-events: none;
+function navigateTo(pageId) { renderPage(pageId); }
+function getSeasonNameJa(code) { const map = {'haru':'春', 'natsu':'夏', 'aki':'秋', 'huyu':'冬', 'shinnen':'新年', 'muki':'無季'}; return map[code] || code; }
+function getSeasonCode(name) { const map = {'春':'haru', '夏':'natsu', '秋':'aki', '冬':'huyu', '新年':'shinnen', '無季':'muki'}; return map[name] || ''; }
+
+function createHaijinList() {
+    const container = document.getElementById('haijinList'); 
+    if (!container) return;
+    container.innerHTML = '';
+
+    let authorMap = {};
+    haikuDatabase.forEach(item => { if (!authorMap[item.author]) authorMap[item.author] = item.authorKana || item.author; });
+    let uniqueAuthors = Object.keys(authorMap);
+    uniqueAuthors.sort((a, b) => authorMap[a].localeCompare(authorMap[b], 'ja'));
+    uniqueAuthors.forEach(author => {
+        const el = document.createElement('div'); el.className = 'vertical-link'; el.innerText = author; 
+        el.onclick = function() { jumpToAuthorRoom(author); };
+        container.appendChild(el);
+    });
+    container.style.justifyContent = (uniqueAuthors.length > 5) ? 'flex-start' : 'center';
 }
 
-.header-row-top {
-    display: flex;
-    justify-content: flex-start;
-    width: 100%;
+function jumpToAuthorRoom(author) {
+    navState.authorName = author;
+    openRoom('author', author, author);
 }
 
-.header-row-bottom {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    width: 100%;
-    min-height: 24px;
+function showKigoList(seasonCode, seasonName) {
+    navState.seasonName = seasonName; navState.category = 'saijiki';
+    const container = document.getElementById('kigoList'); 
+    if (!container) return;
+    container.innerHTML = '';
+    
+    let kigoMap = {};
+    haikuDatabase.forEach(item => { 
+        if (item.season === seasonCode) { 
+            let targetKigo = item.parentKigo || item.kigo;
+            if (targetKigo && !kigoMap[targetKigo]) {
+                kigoMap[targetKigo] = item.kigoKana || targetKigo; 
+            }
+        } 
+    });
+    
+    let uniqueKigos = Object.keys(kigoMap);
+    if (uniqueKigos.length === 0) { alert('まだこの季節の季語が登録されていません。'); return; }
+    uniqueKigos.sort((a, b) => kigoMap[a].localeCompare(kigoMap[b], 'ja'));
+    uniqueKigos.forEach(kigo => {
+        const el = document.createElement('div'); el.className = 'vertical-link'; el.innerText = kigo;
+        el.onclick = function() { navState.kigoName = kigo; openRoom('kigo', kigo, kigo); }; 
+        container.appendChild(el);
+    });
+    container.style.justifyContent = (uniqueKigos.length > 8) ? 'flex-start' : 'center';
+    renderPage('kigoListPage');
 }
 
-.breadcrumb {
-    font-size: 0.82rem; 
-    color: #666666;
-    letter-spacing: 0.05em; 
-    display: flex; 
-    flex-wrap: wrap; 
-    align-items: center; 
-    gap: 0.2rem 0.4rem;
-    line-height: 1.3;
-    pointer-events: auto;
-    max-width: 100%;
-}
-.breadcrumb span.link { cursor: pointer; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s; white-space: nowrap; }
-.breadcrumb span.link:hover { color: #2b2b2b; border-bottom: 1px solid #2b2b2b; }
-.breadcrumb span.separator { color: #b5b5b5; font-family: sans-serif; }
-.breadcrumb span.current { white-space: nowrap; }
-
-/* 🏷️ 右上情報タグ（2段組み対応） */
-.info-upper-tag {
-    font-size: 0.95rem;
-    color: #2b2b2b;
-    letter-spacing: 0.05em;
-    font-weight: 500;
-    white-space: nowrap;
-    text-align: right;
-    pointer-events: auto;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-.info-upper-tag a { color: #2b2b2b; text-decoration: none; border-bottom: 1px solid #2b2b2b; }
-
-.info-kigo-sub {
-    font-size: 0.83rem;
-    color: #888888;
-    margin-bottom: 2px;
+function openRoom(type, targetValue, displayName) {
+    currentDisplayType = type; 
+    if (type === 'author') { navState.category = 'haijin'; navState.isDetarame = false; currentRoomHaikus = haikuDatabase.filter(item => item.author === targetValue); shuffleArray(currentRoomHaikus); }
+    else if (type === 'haiku_season') { navState.category = 'haiku'; navState.seasonName = displayName; navState.isDetarame = false; currentRoomHaikus = haikuDatabase.filter(item => item.season === targetValue); shuffleArray(currentRoomHaikus); }
+    else if (type === 'kigo') { navState.category = 'saijiki'; navState.isDetarame = false; currentRoomHaikus = haikuDatabase.filter(item => (item.parentKigo === targetValue || item.kigo === targetValue)); shuffleArray(currentRoomHaikus); }
+    else if (type === 'detarame') { navState.category = 'omikuji_all'; navState.isDetarame = true; currentRoomHaikus = [...haikuDatabase]; shuffleArray(currentRoomHaikus); }
+    else if (type === 'kigo_muki') { navState.category = 'saijiki'; navState.seasonName = '無季'; navState.kigoName = '無季'; navState.isDetarame = false; currentRoomHaikus = haikuDatabase.filter(item => item.season === 'muki'); shuffleArray(currentRoomHaikus); }
+    
+    if (currentRoomHaikus.length === 0) { alert('まだ条件に合う俳句が登録されていません。'); return; }
+    currentIndex = 0; renderPage('roomPage'); updateHaikuDisplay();
 }
 
-#infoTrigger { 
-    font-size: 1.1rem;
-    color: #8c8476;
-    cursor: pointer;
-    display: none;
-    padding: 2px 8px;
-    pointer-events: auto;
-    font-family: serif;
-    font-style: italic;
+function shuffleArray(array) { for (let i = array.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [array[i], array[j]] = [array[j], array[i]]; } }
+function changeHaiku(direction) { if (currentIndex + direction >= 0 && currentIndex + direction < currentRoomHaikus.length) { currentIndex += direction; updateHaikuDisplay(); } }
+
+function revealHiddenInfo() {
+    infoRevealed = true; 
+    const infoTrigger = document.getElementById('infoTrigger');
+    if (infoTrigger) infoTrigger.style.display = 'none';
+    
+    const currentHaiku = currentRoomHaikus[currentIndex];
+    if (!currentHaiku) return;
+
+    let kigoStr = '';
+    if (currentHaiku.season === 'muki') {
+        kigoStr = '無季';
+    } else {
+        let pKigo = currentHaiku.parentKigo || currentHaiku.kigo;
+        let dSeason = currentHaiku.detailSeason ? `（${currentHaiku.detailSeason}）` : '';
+        kigoStr = pKigo + dSeason;
+    }
+
+    const mainTag = document.getElementById('roomMainTag');
+    if (mainTag) {
+        mainTag.className = 'info-upper-tag';
+        mainTag.innerHTML = `<div class="info-kigo-sub">${kigoStr}</div><div><a href="javascript:void(0);" onclick="jumpToAuthorRoom('${currentHaiku.author}')">${currentHaiku.author}</a></div>`;
+    }
+    
+    updateBreadcrumb();
 }
 
-/* 🏹 矢印ナビゲーションボタン */
-.nav-arrow { 
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.0rem;
-    color: #a0998c;
-    cursor: pointer; 
-    padding: 20px 15px;
-    z-index: 25;
-    background: none;
-    border: none; 
-    transition: color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
-    opacity: 0.6;
-    user-select: none;
-}
-.nav-arrow:active { transform: translateY(-50%) scale(0.9); }
-.nav-arrow:hover { color: #2b2b2b; opacity: 1; }
+function updateHaikuDisplay() {
+    const currentHaiku = currentRoomHaikus[currentIndex];
+    if (!currentHaiku) return;
 
-.arrow-left { left: calc(5px + env(safe-area-inset-left)); } 
-.arrow-right { right: calc(5px + env(safe-area-inset-right)); }
-.nav-arrow.disabled { visibility: hidden; }
+    const phraseEl = document.getElementById('haikuPhrase');
+    if (phraseEl) phraseEl.innerText = currentHaiku.phrase;
 
-#loadingOverlay { 
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-    background-color: #faf9f6; display: flex; justify-content: center; align-items: center; 
-    z-index: 100; color: #8c8476; font-size: 14px; letter-spacing: 0.15em; 
+    let kigoString = '';
+    if (currentHaiku.season === 'muki') {
+        kigoString = '無季';
+    } else {
+        let pKigo = currentHaiku.parentKigo || currentHaiku.kigo;
+        let dSeason = currentHaiku.detailSeason ? `（${currentHaiku.detailSeason}）` : '';
+        kigoString = pKigo + dSeason;
+    }
+
+    const infoTrigger = document.getElementById('infoTrigger');
+    const mainTag = document.getElementById('roomMainTag');
+
+    if (navState.category === 'omikuji_all') {
+        infoRevealed = false; 
+        if (mainTag) mainTag.innerText = ''; 
+        if (infoTrigger) infoTrigger.style.display = 'inline-block';
+    } 
+    else if (navState.category === 'haijin') {
+        if (infoTrigger) infoTrigger.style.display = 'none'; 
+        if (mainTag) {
+            mainTag.className = 'info-upper-tag';
+            mainTag.innerText = kigoString;
+        }
+    }
+    else {
+        if (infoTrigger) infoTrigger.style.display = 'none'; 
+        if (mainTag) {
+            mainTag.className = 'info-upper-tag';
+            mainTag.innerText = currentHaiku.author;
+        }
+    }
+
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    if (prevBtn) { if (currentIndex === 0) prevBtn.classList.add('disabled'); else prevBtn.classList.remove('disabled'); }
+    if (nextBtn) { if (currentIndex === currentRoomHaikus.length - 1) nextBtn.classList.add('disabled'); else nextBtn.classList.remove('disabled'); }
+    
+    updateBreadcrumb();
 }
 
-/* 🐾 おみ句じ猫ボタン（左端寄せ） */
-.fixed-cat-trigger {
-    position: fixed;
-    bottom: calc(5px + env(safe-area-inset-bottom));
-    left: calc(0px + env(safe-area-inset-left));
-    width: 220px !important;
-    height: auto !important;
-    cursor: pointer;
-    z-index: 50;
-    transition: transform 0.2s ease, opacity 0.3s ease;
-    opacity: 0.85;
+function initSwipeEvents() {
+    const room = document.getElementById('roomPage');
+    if (!room) return;
+
+    room.addEventListener('touchstart', function(e) {
+        if (!isRoomOpen) return;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    room.addEventListener('touchend', function(e) {
+        if (!isRoomOpen) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const touchEndY = e.changedTouches[0].clientY;
+
+        const diffX = touchEndX - touchStartX;
+        const diffY = touchEndY - touchStartY;
+
+        if (Math.abs(diffX) > 35 && Math.abs(diffX) > Math.abs(diffY)) {
+            if (diffX > 0) {
+                changeHaiku(1);
+            } else {
+                changeHaiku(-1);
+            }
+        }
+    }, { passive: true });
 }
-.fixed-cat-trigger:hover { transform: scale(1.05); opacity: 1; }
-.fixed-cat-trigger.hidden { display: none !important; }
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'o' || event.key === 'O') {
+        triggerInstantOmikuji();
+        return;
+    }
+
+    if (!isRoomOpen) return;
+    if (event.key === 'ArrowLeft') changeHaiku(1); 
+    if (event.key === 'ArrowRight') changeHaiku(-1); 
+    if (event.key === 'i' || event.key === 'I') { if (navState.category === 'omikuji_all' && !infoRevealed) revealHiddenInfo(); }
+});
