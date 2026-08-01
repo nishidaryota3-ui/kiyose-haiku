@@ -103,6 +103,12 @@ body, html {
     text-align: center; display: block;
 }
 
+/* 🌸 縦書きルビ（ふりがな）用のデザイン調整を追記 */
+.phrase ruby { ruby-position: over; -webkit-ruby-position: over; }
+.phrase rt { font-size: 0.45em; letter-spacing: 0.1em; color: #555555; }
+.ruby-block { display: inline-block; writing-mode: vertical-rl; }
+ruby { ruby-position: over; }
+
 /* 🧭 グローバルヘッダー（パンくず上段 ＋ 右上情報下段） */
 .global-header-area {
     position: absolute;
