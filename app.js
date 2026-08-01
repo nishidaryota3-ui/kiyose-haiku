@@ -282,12 +282,31 @@ function revealHiddenInfo() {
     updateBreadcrumb();
 }
 
+// 🌸 ルビ変換処理を追加
+function formatRubyText(text) {
+    if (!text) return '';
+    let str = String(text);
+
+    str = str.replace(/｜/g, '|');
+
+    str = str.replace(/\|([^《（(]+)[《（(]([^》）)]+)[》）)]/g, function(match, targetText, rubyText) {
+        return '<span class="ruby-block"><ruby>' + targetText + '<rt>' + rubyText + '</rt></ruby></span>';
+    });
+
+    str = str.replace(/([\u4E00-\u9FFF\u3005]+)[《（(]([^》）)]+)[》）)]/g, function(match, targetText, rubyText) {
+        return '<span class="ruby-block"><ruby>' + targetText + '<rt>' + rubyText + '</rt></ruby></span>';
+    });
+
+    return str;
+}
+
 function updateHaikuDisplay() {
     const currentHaiku = currentRoomHaikus[currentIndex];
     if (!currentHaiku) return;
 
     const phraseEl = document.getElementById('haikuPhrase');
-    if (phraseEl) phraseEl.innerText = currentHaiku.phrase;
+    // innerTextからinnerHTMLに変更し、formatRubyTextを通すように修正
+    if (phraseEl) phraseEl.innerHTML = formatRubyText(currentHaiku.phrase);
 
     let kigoString = '';
     if (currentHaiku.season === 'muki') {
